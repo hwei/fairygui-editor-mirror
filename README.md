@@ -73,6 +73,25 @@ https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI
 
 GitHub Release 资产走 CDN，**无 Referer 限制**，可直接 `curl`/`wget`/浏览器下载。
 
+### 中国大陆加速（gh-proxy 镜像）
+
+大陆直连 GitHub 偶尔较慢或不稳，可在 Release 直链前**加上 `https://gh-proxy.org/` 前缀**走代理：
+
+```bash
+# 最新版 Windows（经 gh-proxy 代理）
+url=$(curl -s https://cdn.jsdelivr.net/gh/hwei/fairygui-editor-mirror@main/latest.json | jq -r .windows)
+curl -fL -o FairyGUI-Editor.zip "https://gh-proxy.org/$url"
+```
+
+指定历史版本也是同理，直接在链接前拼前缀：
+
+```
+https://gh-proxy.org/https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_6.1.4.zip
+https://gh-proxy.org/https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_Mac_6.1.4.zip
+```
+
+> ℹ️ gh-proxy 是第三方公益 GitHub 代理，本仓库不控制其可用性；若失效可换其他同类代理（如 `gh-proxy.com`），或直接用上面的 GitHub 原始直链。
+
 ---
 
 ## 工作原理

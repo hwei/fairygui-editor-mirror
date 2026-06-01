@@ -1,0 +1,133 @@
+name: Mirror FairyGUI Editor
+
+# 每天定时检查上游最新版；也可手动触发。
+on:
+  schedule:
+    - cron: '0 2 * * *' # 每天 UTC 02:00（北京时间 10:00）
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '即使版本未更新也强制重新镜像'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # 创建 Release、推送 latest.json 需要
+
+concurrency:
+  group: mirror
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 1) 从官网 SPA 的 JS 分包里解析出最新版本号
+      - name: Detect upstream version
+        id: detect
+        run: |
+          set -euo pipefail
+          html=$(curl -fsS https://fairygui.com/release/editor)
+          ver=""
+          for c in $(echo "$html" | grep -oE '/js/chunk-[a-z0-9.]+\.js'); do
+            body=$(curl -fsS "https://fairygui.com$c") || continue
+            ver=$(echo "$body" \
+              | grep -oE "JSON\.parse\('\{\"version\":\"[0-9.]+\"\}'\)" \
+              | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
+            [ -n "$ver" ] && break
+          done
+          if [ -z "$ver" ]; then
+            echo "::error::无法从官网解析版本号，页面结构可能已变，请检查解析逻辑"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "✅ 检测到上游版本: $ver"
+
+      # 2) 已存在同名 Release 就跳过（force 时不跳过）
+      - name: Check if already mirrored
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ver="${{ steps.detect.outputs.version }}"
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "force=on，继续镜像"; echo "need=true" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          if gh release view "v$ver" >/dev/null 2>&1; then
+            echo "v$ver 已存在，跳过"; echo "need=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "v$ver 不存在，需要镜像"; echo "need=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 3) 从原站下载（必须带 Referer，否则 403），并校验确实是 zip
+      - name: Download installers
+        if: steps.check.outputs.need == 'true'
+        run: |
+          set -euo pipefail
+          ver="${{ steps.detect.outputs.version }}"
+          dl() {
+            name="$1"
+            echo "下载 $name ..."
+            curl -fL --retry 3 -H "Referer: https://fairygui.com/" \
+              -o "$name" "https://res.fairygui.com/$name"
+            if ! unzip -t "$name" >/dev/null 2>&1; then
+              echo "::error::$name 不是有效的 zip（上游可能改了命名或链接）"
+              exit 1
+            fi
+            echo "✅ $name  $(du -h "$name" | cut -f1)"
+          }
+          dl "FairyGUI-Editor_${ver}.zip"
+          dl "FairyGUI-Editor_Mac_${ver}.zip"
+
+      # 4) 创建 Release 并上传两个原名 zip 作为资产
+      - name: Create release
+        if: steps.check.outputs.need == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          ver="${{ steps.detect.outputs.version }}"
+          gh release create "v$ver" \
+            --title "FairyGUI Editor $ver" \
+            --notes "FairyGUI Editor **$ver** 的镜像。
+
+          - Windows: \`FairyGUI-Editor_${ver}.zip\`
+          - macOS: \`FairyGUI-Editor_Mac_${ver}.zip\`
+
+          官方下载页：https://fairygui.com/release/editor
+          本仓库仅做自动化镜像与归档，版权归 FairyGUI 官方所有。" \
+            "FairyGUI-Editor_${ver}.zip" \
+            "FairyGUI-Editor_Mac_${ver}.zip"
+          echo "✅ 已发布 v$ver"
+
+      # 5) 更新 latest.json 并提交（驱动 jsDelivr CDN 查询端点）
+      - name: Update latest.json
+        if: steps.check.outputs.need == 'true'
+        run: |
+          set -euo pipefail
+          ver="${{ steps.detect.outputs.version }}"
+          repo="${{ github.repository }}"
+          base="https://github.com/$repo/releases/download/v$ver"
+          cat > latest.json <<EOF
+          {
+            "version": "$ver",
+            "published_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "windows": "$base/FairyGUI-Editor_${ver}.zip",
+            "macos": "$base/FairyGUI-Editor_Mac_${ver}.zip",
+            "release": "https://github.com/$repo/releases/tag/v$ver"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          if git diff --cached --quiet; then
+            echo "latest.json 无变化"; exit 0
+          fi
+          git commit -m "chore: 更新到 FairyGUI Editor $ver"
+          git push
+          # 主动刷新 jsDelivr 缓存（失败不影响主流程）
+          curl -fsS "https://purge.jsdelivr.net/gh/$repo@main/latest.json" || true
+          echo "✅ latest.json 已更新并推送"

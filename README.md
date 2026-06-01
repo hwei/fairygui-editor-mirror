@@ -13,7 +13,7 @@
 **方式 1 — jsDelivr CDN（推荐，国内可达、无 API 限流）**
 
 ```bash
-curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json
+curl -s https://cdn.jsdelivr.net/gh/hwei/fairygui-editor-mirror@main/latest.json
 ```
 
 返回：
@@ -22,9 +22,9 @@ curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json
 {
   "version": "6.1.4",
   "published_at": "2026-06-01T02:00:00Z",
-  "windows": "https://github.com/OWNER/REPO/releases/download/v6.1.4/FairyGUI-Editor_6.1.4.zip",
-  "macos":   "https://github.com/OWNER/REPO/releases/download/v6.1.4/FairyGUI-Editor_Mac_6.1.4.zip",
-  "release": "https://github.com/OWNER/REPO/releases/tag/v6.1.4"
+  "windows": "https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_6.1.4.zip",
+  "macos":   "https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_Mac_6.1.4.zip",
+  "release": "https://github.com/hwei/fairygui-editor-mirror/releases/tag/v6.1.4"
 }
 ```
 
@@ -33,12 +33,12 @@ curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json
 **方式 2 — GitHub Release API（匿名 60 次/小时限流）**
 
 ```bash
-curl -s https://api.github.com/repos/OWNER/REPO/releases/latest | jq -r .tag_name
+curl -s https://api.github.com/repos/hwei/fairygui-editor-mirror/releases/latest | jq -r .tag_name
 ```
 
 **方式 3 — 网页**
 
-直接打开 <https://github.com/OWNER/REPO/releases/latest>。
+直接打开 <https://github.com/hwei/fairygui-editor-mirror/releases/latest>。
 
 ---
 
@@ -47,28 +47,28 @@ curl -s https://api.github.com/repos/OWNER/REPO/releases/latest | jq -r .tag_nam
 **只取版本号：**
 
 ```bash
-curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json | jq -r .version
+curl -s https://cdn.jsdelivr.net/gh/hwei/fairygui-editor-mirror@main/latest.json | jq -r .version
 ```
 
 **下载最新版（Windows）：**
 
 ```bash
-url=$(curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json | jq -r .windows)
+url=$(curl -s https://cdn.jsdelivr.net/gh/hwei/fairygui-editor-mirror@main/latest.json | jq -r .windows)
 curl -fL -o FairyGUI-Editor.zip "$url"
 ```
 
 **下载最新版（macOS）：**
 
 ```bash
-url=$(curl -s https://cdn.jsdelivr.net/gh/OWNER/REPO@main/latest.json | jq -r .macos)
+url=$(curl -s https://cdn.jsdelivr.net/gh/hwei/fairygui-editor-mirror@main/latest.json | jq -r .macos)
 curl -fL -o FairyGUI-Editor-Mac.zip "$url"
 ```
 
 **下载指定历史版本：**
 
 ```
-https://github.com/OWNER/REPO/releases/download/v6.1.4/FairyGUI-Editor_6.1.4.zip
-https://github.com/OWNER/REPO/releases/download/v6.1.4/FairyGUI-Editor_Mac_6.1.4.zip
+https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_6.1.4.zip
+https://github.com/hwei/fairygui-editor-mirror/releases/download/v6.1.4/FairyGUI-Editor_Mac_6.1.4.zip
 ```
 
 GitHub Release 资产走 CDN，**无 Referer 限制**，可直接 `curl`/`wget`/浏览器下载。

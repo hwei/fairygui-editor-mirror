@@ -22,7 +22,7 @@ jobs:
   mirror:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # 1) 从官网 SPA 的 JS 分包里解析出最新版本号
       - name: Detect upstream version

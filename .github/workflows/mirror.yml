@@ -24,20 +24,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # 1) 从官网 SPA 的 JS 分包里解析出最新版本号
+      # 1) 从官网更新日志里解析出最新版本号（取第一个 <h2>，形如 "6.1.4 (2026/2/3 发布)"，
+      #    也可能是 "6.1.2/6.1.3 (...)"，此时取其中最大的）
       - name: Detect upstream version
         id: detect
         run: |
           set -euo pipefail
           html=$(curl -fsS https://fairygui.com/release/editor)
-          ver=""
-          for c in $(echo "$html" | grep -oE '/js/chunk-[a-z0-9.]+\.js'); do
-            body=$(curl -fsS "https://fairygui.com$c") || continue
-            ver=$(echo "$body" \
-              | grep -oE "JSON\.parse\('\{\"version\":\"[0-9.]+\"\}'\)" \
-              | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 || true)
-            [ -n "$ver" ] && break
-          done
+          ver=$(echo "$html" \
+            | grep -oE '<h2[^>]*>[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+\.[0-9]+\.[0-9]+)*' \
+            | head -1 \
+            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1 || true)
           if [ -z "$ver" ]; then
             echo "::error::无法从官网解析版本号，页面结构可能已变，请检查解析逻辑"
             exit 1

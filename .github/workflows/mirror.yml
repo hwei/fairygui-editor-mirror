@@ -24,21 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      # 1) 从官网更新日志里解析出最新版本号（取第一个 <h2>，形如 "6.1.4 (2026/2/3 发布)"，
-      #    也可能是 "6.1.2/6.1.3 (...)"，此时取其中最大的）
+      # 1) 从官网更新日志里解析出最新版本号。更新日志最新一条标题形如
+      #    "6.1.4 (2026/2/3 发布)"（也可能是 "6.1.2/6.1.3 (...)"，取其中最大的）。
+      #    不依赖具体标签，HTML 与内嵌的 RSC 数据里都能匹配。
       - name: Detect upstream version
         id: detect
         run: |
           set -euo pipefail
-          html=$(curl -fsS https://fairygui.com/release/editor)
-          ver=$(echo "$html" \
-            | grep -oE '<h2[^>]*>[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+\.[0-9]+\.[0-9]+)*' \
+          curl -fsSL --retry 3 \
+            -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' \
+            -o page.html https://fairygui.com/release/editor
+          ver=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+(/[0-9]+\.[0-9]+\.[0-9]+)* ?\([0-9]{4}/[0-9]{1,2}/[0-9]{1,2} 发布\)' page.html \
             | head -1 \
-            | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -1 || true)
+            | grep -oE '^[0-9.]+(/[0-9.]+)*' | tr '/' '\n' | sort -V | tail -1 || true)
           if [ -z "$ver" ]; then
             echo "::error::无法从官网解析版本号，页面结构可能已变，请检查解析逻辑"
+            echo "--- 响应大小: $(wc -c < page.html) 字节；前 800 字节如下 ---"
+            head -c 800 page.html || true
             exit 1
           fi
+          rm -f page.html
           echo "version=$ver" >> "$GITHUB_OUTPUT"
           echo "✅ 检测到上游版本: $ver"
 
